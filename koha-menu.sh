@@ -152,6 +152,7 @@ while true; do
     echo "2) Instalare MySQL și Koha"
     echo "3) Configurare /etc/koha/koha-sites.conf"
     echo "4) Creare instanță Koha"
+    echo "5) Listeaza si instaleaza traduceri Koha"
     echo "0) Ieșire"
     echo
 
