@@ -17,7 +17,6 @@ ask_value() {
     local key="$1"
     local description="$2"
     local example="$3"
-    local default_value="$4"
     local input
 
     echo >&2
@@ -25,21 +24,7 @@ ask_value() {
     echo "Câmp: ${key}" >&2
     echo "Exemplu: ${key}=\"${example}\"" >&2
 
-    if [[ -n "${default_value}" ]]; then
-        read -r -p "Valoare [${default_value}] (- pentru gol): " input
-
-        if [[ "${input}" == "-" ]]; then
-            input=""
-        elif [[ -z "${input}" ]]; then
-            input="${default_value}"
-        fi
-    else
-        read -r -p "Valoare [gol] (- pentru gol): " input
-
-        if [[ "${input}" == "-" ]]; then
-            input=""
-        fi
-    fi
+    read -r -p "Valoare [gol]: " input
 
     printf '%s' "${input}"
 }
