@@ -84,7 +84,7 @@ validate_settings() {
         echo "EROARE: Pentru acces direct prin IP,"
         echo "INTRAPORT și OPACPORT trebuie să fie diferite."
         echo
-        echo "Configurație recomandată:"
+        echo "Recomandat:"
         echo 'OPACPORT="80"'
         echo 'INTRAPORT="8080"'
         exit 1
@@ -95,10 +95,7 @@ validate_settings() {
             ;;
         *)
             echo
-            echo "EROARE: ZEBRA_MARC_FORMAT trebuie să fie:"
-            echo "  marc21"
-            echo "sau"
-            echo "  unimarc"
+            echo "EROARE: ZEBRA_MARC_FORMAT trebuie să fie marc21 sau unimarc."
             exit 1
             ;;
     esac
@@ -237,23 +234,12 @@ echo
 echo "Se vor modifica DOAR câmpurile existente."
 echo "Nu se adaugă câmpuri noi."
 echo
-echo "Pentru acces direct prin IP:"
+echo "Default pentru acces prin IP:"
 echo 'DOMAIN=""'
-echo 'OPACPORT="80"'
 echo 'INTRAPORT="8080"'
-echo
-echo "Pentru domeniu, exemplu:"
-echo 'DOMAIN=".domain.com"'
+echo 'OPACPORT="80"'
 echo
 
-CURRENT_DOMAIN="$(get_current_value DOMAIN)"
-CURRENT_INTRAPORT="$(get_current_value INTRAPORT)"
-CURRENT_INTRAPREFIX="$(get_current_value INTRAPREFIX)"
-CURRENT_INTRASUFFIX="$(get_current_value INTRASUFFIX)"
-CURRENT_OPACPORT="$(get_current_value OPACPORT)"
-CURRENT_OPACPREFIX="$(get_current_value OPACPREFIX)"
-CURRENT_OPACSUFFIX="$(get_current_value OPACSUFFIX)"
-CURRENT_DEFAULTSQL="$(get_current_value DEFAULTSQL)"
 CURRENT_ZEBRA_MARC_FORMAT="$(get_current_value ZEBRA_MARC_FORMAT)"
 CURRENT_ZEBRA_LANGUAGE="$(get_current_value ZEBRA_LANGUAGE)"
 CURRENT_USE_MEMCACHED="$(get_current_value USE_MEMCACHED)"
@@ -265,23 +251,15 @@ DOMAIN="$(
         "DOMAIN" \
         "Domeniul pentru instanțele Koha. Lasă gol dacă folosești doar IP." \
         ".domain.com" \
-        "${CURRENT_DOMAIN:-}"
+        ""
 )"
-
-if [[ -z "${DOMAIN}" ]]; then
-    DEFAULT_INTRAPORT="8080"
-    DEFAULT_OPACPORT="80"
-else
-    DEFAULT_INTRAPORT="${CURRENT_INTRAPORT:-80}"
-    DEFAULT_OPACPORT="${CURRENT_OPACPORT:-80}"
-fi
 
 INTRAPORT="$(
     ask_value \
         "INTRAPORT" \
         "Portul pentru interfața bibliotecarului / staff client." \
         "8080" \
-        "${DEFAULT_INTRAPORT}"
+        "8080"
 )"
 
 INTRAPREFIX="$(
@@ -289,7 +267,7 @@ INTRAPREFIX="$(
         "INTRAPREFIX" \
         "Prefix pentru interfața staff. Pentru IP simplu, lasă gol." \
         "" \
-        "${CURRENT_INTRAPREFIX:-}"
+        ""
 )"
 
 INTRASUFFIX="$(
@@ -297,7 +275,7 @@ INTRASUFFIX="$(
         "INTRASUFFIX" \
         "Suffix pentru interfața staff. De obicei se lasă gol." \
         "" \
-        "${CURRENT_INTRASUFFIX:-}"
+        ""
 )"
 
 OPACPORT="$(
@@ -305,7 +283,7 @@ OPACPORT="$(
         "OPACPORT" \
         "Portul pentru OPAC, adică interfața publică." \
         "80" \
-        "${DEFAULT_OPACPORT}"
+        "80"
 )"
 
 OPACPREFIX="$(
@@ -313,7 +291,7 @@ OPACPREFIX="$(
         "OPACPREFIX" \
         "Prefix pentru OPAC. Pentru IP simplu, lasă gol." \
         "" \
-        "${CURRENT_OPACPREFIX:-}"
+        ""
 )"
 
 OPACSUFFIX="$(
@@ -321,7 +299,7 @@ OPACSUFFIX="$(
         "OPACSUFFIX" \
         "Suffix pentru OPAC. De obicei se lasă gol." \
         "" \
-        "${CURRENT_OPACSUFFIX:-}"
+        ""
 )"
 
 DEFAULTSQL="$(
@@ -329,7 +307,7 @@ DEFAULTSQL="$(
         "DEFAULTSQL" \
         "Fișier SQL cu date implicite. De obicei se lasă gol." \
         "/cale/date.sql" \
-        "${CURRENT_DEFAULTSQL:-}"
+        ""
 )"
 
 ZEBRA_MARC_FORMAT="$(
@@ -343,7 +321,7 @@ ZEBRA_MARC_FORMAT="$(
 ZEBRA_LANGUAGE="$(
     ask_value \
         "ZEBRA_LANGUAGE" \
-        "Limba principală pentru Zebra indexing. Valori uzuale: en, fr, es." \
+        "Limba principală pentru Zebra indexing." \
         "en" \
         "${CURRENT_ZEBRA_LANGUAGE:-en}"
 )"
