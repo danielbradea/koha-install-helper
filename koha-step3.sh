@@ -35,8 +35,13 @@ ask_value() {
     echo "Exemplu: ${key}=\"${example}\"" >&2
 
     if [[ -n "${default_value}" ]]; then
-        read -r -p "Valoare [${default_value}]: " input
-        input="${input:-${default_value}}"
+        read -r -p "Valoare [${default_value}] (- pentru gol): " input
+
+        if [[ "${input}" == "-" ]]; then
+            input=""
+        elif [[ -z "${input}" ]]; then
+            input="${default_value}"
+        fi
     else
         read -r -p "Valoare [gol]: " input
     fi
