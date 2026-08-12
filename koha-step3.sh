@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 CONFIG_FILE="/etc/koha/koha-sites.conf"
 PORTS_FILE="/etc/apache2/ports.conf"
+APACHE_PORTS_BACKUP=""
 
 require_root() {
     if [[ "${EUID}" -ne 0 ]]; then
@@ -78,8 +79,14 @@ validate_settings() {
     validate_port "${INTRAPORT}" "INTRAPORT"
     validate_port "${OPACPORT}" "OPACPORT"
 
-    if [[ "${INTRAPORT}" == "${OPACPORT}" ]]; then
-        echo "EROARE: INTRAPORT și OPACPORT nu pot fi identice."
+    if [[ -z "${DOMAIN}" && "${INTRAPORT}" == "${OPACPORT}" ]]; then
+        echo
+        echo "EROARE: Pentru acces direct prin IP,"
+        echo "INTRAPORT și OPACPORT trebuie să fie diferite."
+        echo
+        echo "Configurație recomandată:"
+        echo 'OPACPORT="80"'
+        echo 'INTRAPORT="8080"'
         exit 1
     fi
 
@@ -87,6 +94,7 @@ validate_settings() {
         marc21|unimarc)
             ;;
         *)
+            echo
             echo "EROARE: ZEBRA_MARC_FORMAT trebuie să fie:"
             echo "  marc21"
             echo "sau"
@@ -99,6 +107,7 @@ validate_settings() {
         yes|no)
             ;;
         *)
+            echo
             echo "EROARE: USE_MEMCACHED trebuie să fie yes sau no."
             exit 1
             ;;
@@ -117,8 +126,8 @@ configure_apache_ports_for_ip() {
     echo "DOMAIN este gol."
     echo "Configurez Apache pentru acces prin IP."
     echo
-    echo "Port OPAC:  ${OPACPORT}"
-    echo "Port Staff: ${INTRAPORT}"
+    echo "OPAC:  port ${OPACPORT}"
+    echo "Staff: port ${INTRAPORT}"
 
     if [[ ! -f "${PORTS_FILE}" ]]; then
         echo
@@ -165,7 +174,7 @@ configure_apache_ports_for_ip() {
     fi
 
     echo
-    echo "Porturi Apache configurate:"
+    echo "Porturi Apache:"
     echo "------------------------------------------"
     grep -E "^[[:space:]]*Listen[[:space:]]+" "${PORTS_FILE}" || true
     echo "------------------------------------------"
@@ -184,11 +193,10 @@ apache_config_test() {
     echo
     echo "EROARE: Configurația Apache nu este validă."
 
-    if [[ -n "${APACHE_PORTS_BACKUP:-}" && -f "${APACHE_PORTS_BACKUP}" ]]; then
+    if [[ -n "${APACHE_PORTS_BACKUP}" && -f "${APACHE_PORTS_BACKUP}" ]]; then
         echo
-        echo "Restaurez automat:"
+        echo "Restaurez automat backup-ul Apache:"
         echo "${APACHE_PORTS_BACKUP}"
-        echo "-> ${PORTS_FILE}"
 
         cp -a "${APACHE_PORTS_BACKUP}" "${PORTS_FILE}"
 
@@ -231,6 +239,8 @@ echo "Nu se adaugă câmpuri noi."
 echo
 echo "Pentru acces direct prin IP:"
 echo 'DOMAIN=""'
+echo 'OPACPORT="80"'
+echo 'INTRAPORT="8080"'
 echo
 echo "Pentru domeniu, exemplu:"
 echo 'DOMAIN=".domain.com"'
@@ -258,12 +268,20 @@ DOMAIN="$(
         "${CURRENT_DOMAIN:-}"
 )"
 
+if [[ -z "${DOMAIN}" ]]; then
+    DEFAULT_INTRAPORT="8080"
+    DEFAULT_OPACPORT="80"
+else
+    DEFAULT_INTRAPORT="${CURRENT_INTRAPORT:-80}"
+    DEFAULT_OPACPORT="${CURRENT_OPACPORT:-80}"
+fi
+
 INTRAPORT="$(
     ask_value \
         "INTRAPORT" \
         "Portul pentru interfața bibliotecarului / staff client." \
         "8080" \
-        "${CURRENT_INTRAPORT:-8080}"
+        "${DEFAULT_INTRAPORT}"
 )"
 
 INTRAPREFIX="$(
@@ -287,7 +305,7 @@ OPACPORT="$(
         "OPACPORT" \
         "Portul pentru OPAC, adică interfața publică." \
         "80" \
-        "${CURRENT_OPACPORT:-80}"
+        "${DEFAULT_OPACPORT}"
 )"
 
 OPACPREFIX="$(
@@ -405,7 +423,6 @@ set_existing_config_value "MEMCACHED_SERVERS" "${MEMCACHED_SERVERS}"
 set_existing_config_value "MEMCACHED_PREFIX" "${MEMCACHED_PREFIX}"
 
 configure_apache_ports_for_ip
-
 apache_config_test
 
 echo
@@ -419,7 +436,7 @@ echo
 echo "Backup koha-sites.conf:"
 echo "${BACKUP_FILE}"
 
-if [[ -n "${APACHE_PORTS_BACKUP:-}" ]]; then
+if [[ -n "${APACHE_PORTS_BACKUP}" ]]; then
     echo
     echo "Backup Apache ports.conf:"
     echo "${APACHE_PORTS_BACKUP}"
