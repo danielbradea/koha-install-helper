@@ -159,7 +159,7 @@ run_step4() {
     echo "Pornesc pasul 4: Creare instanță Koha"
     echo
 
-    sudo bash "${STEP3_SCRIPT}"
+    sudo bash "${STEP4_SCRIPT}"
 
 }
 

@@ -30,7 +30,6 @@ ask_library_name() {
     echo "Exemplu nume librărie / instanță:"
     echo "biblioteca"
     echo "library"
-    echo "uem"
     echo
     echo "ATENȚIE:"
     echo "- folosește litere mici"
