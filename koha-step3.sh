@@ -13,15 +13,6 @@ require_root() {
     fi
 }
 
-get_current_value() {
-    local key="$1"
-
-    grep -E "^[[:space:]]*${key}=" "${CONFIG_FILE}" \
-        | tail -n 1 \
-        | cut -d '=' -f2- \
-        | sed 's/^[[:space:]]*//; s/^"//; s/"[[:space:]]*$//' || true
-}
-
 ask_value() {
     local key="$1"
     local description="$2"
@@ -43,7 +34,11 @@ ask_value() {
             input="${default_value}"
         fi
     else
-        read -r -p "Valoare [gol]: " input
+        read -r -p "Valoare [gol] (- pentru gol): " input
+
+        if [[ "${input}" == "-" ]]; then
+            input=""
+        fi
     fi
 
     printf '%s' "${input}"
@@ -61,7 +56,7 @@ set_existing_config_value() {
             "s|^[[:space:]]*${key}=.*|${key}=\"${escaped_value}\"|" \
             "${CONFIG_FILE}"
     else
-        echo "ATENȚIE: Nu am găsit câmpul ${key} în ${CONFIG_FILE}. Nu îl adaug."
+        echo "ATENȚIE: Nu am găsit ${key} în ${CONFIG_FILE}. Nu îl adaug."
     fi
 }
 
@@ -89,7 +84,7 @@ validate_settings() {
         echo "EROARE: Pentru acces direct prin IP,"
         echo "INTRAPORT și OPACPORT trebuie să fie diferite."
         echo
-        echo "Recomandat:"
+        echo 'Recomandat:'
         echo 'OPACPORT="80"'
         echo 'INTRAPORT="8080"'
         exit 1
@@ -99,7 +94,6 @@ validate_settings() {
         marc21|unimarc)
             ;;
         *)
-            echo
             echo "EROARE: ZEBRA_MARC_FORMAT trebuie să fie marc21 sau unimarc."
             exit 1
             ;;
@@ -109,7 +103,6 @@ validate_settings() {
         yes|no)
             ;;
         *)
-            echo
             echo "EROARE: USE_MEMCACHED trebuie să fie yes sau no."
             exit 1
             ;;
@@ -119,14 +112,16 @@ validate_settings() {
 configure_apache_ports_for_ip() {
     if [[ -n "${DOMAIN}" ]]; then
         echo
-        echo "DOMAIN nu este gol."
-        echo "Nu modific ${PORTS_FILE} pentru acces direct pe IP."
+        echo "DOMAIN este setat la:"
+        echo "${DOMAIN}"
+        echo
+        echo "Nu modific ${PORTS_FILE} pentru acces direct prin IP."
         return 0
     fi
 
     echo
     echo "DOMAIN este gol."
-    echo "Configurez Apache pentru acces prin IP."
+    echo "Configurez Apache pentru acces direct prin IP."
     echo
     echo "OPAC:  port ${OPACPORT}"
     echo "Staff: port ${INTRAPORT}"
@@ -134,7 +129,6 @@ configure_apache_ports_for_ip() {
     if [[ ! -f "${PORTS_FILE}" ]]; then
         echo
         echo "ATENȚIE: Nu există ${PORTS_FILE}."
-        echo "Nu pot modifica porturile Apache."
         return 0
     fi
 
@@ -142,7 +136,7 @@ configure_apache_ports_for_ip() {
     cp -a "${PORTS_FILE}" "${APACHE_PORTS_BACKUP}"
 
     echo
-    echo "Backup Apache creat:"
+    echo "Backup Apache:"
     echo "${APACHE_PORTS_BACKUP}"
 
     if ! grep -qE \
@@ -159,17 +153,7 @@ configure_apache_ports_for_ip() {
         "^[[:space:]]*Listen[[:space:]]+${INTRAPORT}([[:space:]]|$)" \
         "${PORTS_FILE}"; then
 
-        if grep -qE \
-            "^[[:space:]]*Listen[[:space:]]+${OPACPORT}[[:space:]]*$" \
-            "${PORTS_FILE}"; then
-
-            sed -i \
-                "/^[[:space:]]*Listen[[:space:]]\+${OPACPORT}[[:space:]]*$/a Listen ${INTRAPORT}" \
-                "${PORTS_FILE}"
-        else
-            echo "Listen ${INTRAPORT}" >> "${PORTS_FILE}"
-        fi
-
+        echo "Listen ${INTRAPORT}" >> "${PORTS_FILE}"
         echo "Adăugat: Listen ${INTRAPORT}"
     else
         echo "Există deja: Listen ${INTRAPORT}"
@@ -184,10 +168,9 @@ configure_apache_ports_for_ip() {
 
 apache_config_test() {
     echo
-    echo "Verificare configurație Apache..."
+    echo "Verific configurația Apache..."
 
     if apache2ctl configtest; then
-        echo
         echo "Apache: configurație OK."
         return 0
     fi
@@ -197,16 +180,12 @@ apache_config_test() {
 
     if [[ -n "${APACHE_PORTS_BACKUP}" && -f "${APACHE_PORTS_BACKUP}" ]]; then
         echo
-        echo "Restaurez automat backup-ul Apache:"
-        echo "${APACHE_PORTS_BACKUP}"
+        echo "Restaurez ${PORTS_FILE} din backup..."
 
         cp -a "${APACHE_PORTS_BACKUP}" "${PORTS_FILE}"
 
-        echo
-        echo "Verific din nou Apache..."
-
         if apache2ctl configtest; then
-            echo "Rollback reușit."
+            echo "Rollback Apache reușit."
         else
             echo "ATENȚIE: Apache continuă să raporteze o eroare."
         fi
@@ -218,17 +197,17 @@ apache_config_test() {
 require_root
 
 if [[ ! -f "${CONFIG_FILE}" ]]; then
-    echo "EROARE: Nu există fișierul:"
+    echo "EROARE: Nu există:"
     echo "${CONFIG_FILE}"
     echo
-    echo "Instalează întâi koha-common."
+    echo "Instalează mai întâi koha-common."
     exit 1
 fi
 
 BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
 cp -a "${CONFIG_FILE}" "${BACKUP_FILE}"
 
-echo "Backup creat:"
+echo "Backup koha-sites.conf creat:"
 echo "${BACKUP_FILE}"
 
 echo
@@ -236,25 +215,21 @@ echo "=========================================="
 echo " CONFIGURARE /etc/koha/koha-sites.conf"
 echo "=========================================="
 echo
-echo "Se vor modifica DOAR câmpurile existente."
-echo "Nu se adaugă câmpuri noi."
-echo
-echo "Default pentru acces prin IP:"
+echo "Default pentru instalare prin IP:"
 echo 'DOMAIN=""'
 echo 'INTRAPORT="8080"'
+echo 'INTRAPREFIX=""'
+echo 'INTRASUFFIX=""'
 echo 'OPACPORT="80"'
+echo 'OPACPREFIX=""'
+echo 'OPACSUFFIX=""'
+echo 'DEFAULTSQL=""'
 echo
-
-CURRENT_ZEBRA_MARC_FORMAT="$(get_current_value ZEBRA_MARC_FORMAT)"
-CURRENT_ZEBRA_LANGUAGE="$(get_current_value ZEBRA_LANGUAGE)"
-CURRENT_USE_MEMCACHED="$(get_current_value USE_MEMCACHED)"
-CURRENT_MEMCACHED_SERVERS="$(get_current_value MEMCACHED_SERVERS)"
-CURRENT_MEMCACHED_PREFIX="$(get_current_value MEMCACHED_PREFIX)"
 
 DOMAIN="$(
     ask_value \
         "DOMAIN" \
-        "Domeniul pentru instanțele Koha. Lasă gol dacă folosești doar IP." \
+        "Domeniul pentru Koha. Pentru acces direct prin IP, lasă gol." \
         ".domain.com" \
         ""
 )"
@@ -262,7 +237,7 @@ DOMAIN="$(
 INTRAPORT="$(
     ask_value \
         "INTRAPORT" \
-        "Portul pentru interfața bibliotecarului / staff client." \
+        "Portul pentru interfața Staff / bibliotecar." \
         "8080" \
         "8080"
 )"
@@ -270,7 +245,7 @@ INTRAPORT="$(
 INTRAPREFIX="$(
     ask_value \
         "INTRAPREFIX" \
-        "Prefix pentru interfața staff. Pentru IP simplu, lasă gol." \
+        "Prefix pentru Staff. Pentru IP, lasă gol." \
         "" \
         ""
 )"
@@ -278,7 +253,7 @@ INTRAPREFIX="$(
 INTRASUFFIX="$(
     ask_value \
         "INTRASUFFIX" \
-        "Suffix pentru interfața staff. De obicei se lasă gol." \
+        "Suffix pentru Staff. Pentru IP, lasă gol." \
         "" \
         ""
 )"
@@ -286,7 +261,7 @@ INTRASUFFIX="$(
 OPACPORT="$(
     ask_value \
         "OPACPORT" \
-        "Portul pentru OPAC, adică interfața publică." \
+        "Portul pentru OPAC / interfața publică." \
         "80" \
         "80"
 )"
@@ -294,7 +269,7 @@ OPACPORT="$(
 OPACPREFIX="$(
     ask_value \
         "OPACPREFIX" \
-        "Prefix pentru OPAC. Pentru IP simplu, lasă gol." \
+        "Prefix pentru OPAC. Pentru IP, lasă gol." \
         "" \
         ""
 )"
@@ -302,7 +277,7 @@ OPACPREFIX="$(
 OPACSUFFIX="$(
     ask_value \
         "OPACSUFFIX" \
-        "Suffix pentru OPAC. De obicei se lasă gol." \
+        "Suffix pentru OPAC. Pentru IP, lasă gol." \
         "" \
         ""
 )"
@@ -310,49 +285,49 @@ OPACSUFFIX="$(
 DEFAULTSQL="$(
     ask_value \
         "DEFAULTSQL" \
-        "Fișier SQL cu date implicite. De obicei se lasă gol." \
-        "/cale/date.sql" \
+        "Fișier SQL implicit. În mod normal se lasă gol." \
+        "" \
         ""
 )"
 
 ZEBRA_MARC_FORMAT="$(
     ask_value \
         "ZEBRA_MARC_FORMAT" \
-        "Format MARC pentru indexare. Valori: marc21 sau unimarc." \
+        "Format MARC. Valori: marc21 sau unimarc." \
         "marc21" \
-        "${CURRENT_ZEBRA_MARC_FORMAT:-marc21}"
+        "marc21"
 )"
 
 ZEBRA_LANGUAGE="$(
     ask_value \
         "ZEBRA_LANGUAGE" \
-        "Limba principală pentru Zebra indexing." \
+        "Limba pentru Zebra indexing." \
         "en" \
-        "${CURRENT_ZEBRA_LANGUAGE:-en}"
+        "en"
 )"
 
 USE_MEMCACHED="$(
     ask_value \
         "USE_MEMCACHED" \
-        "Folosește memcached pentru Koha. Valori: yes sau no." \
+        "Activează memcached. Valori: yes sau no." \
         "yes" \
-        "${CURRENT_USE_MEMCACHED:-yes}"
+        "yes"
 )"
 
 MEMCACHED_SERVERS="$(
     ask_value \
         "MEMCACHED_SERVERS" \
-        "Server memcached în format IP:port." \
+        "Adresa serverului memcached." \
         "127.0.0.1:11211" \
-        "${CURRENT_MEMCACHED_SERVERS:-127.0.0.1:11211}"
+        "127.0.0.1:11211"
 )"
 
 MEMCACHED_PREFIX="$(
     ask_value \
         "MEMCACHED_PREFIX" \
-        "Prefix namespace memcached pentru Koha." \
+        "Prefix namespace pentru memcached." \
         "koha_" \
-        "${CURRENT_MEMCACHED_PREFIX:-koha_}"
+        "koha_"
 )"
 
 validate_settings
@@ -385,7 +360,7 @@ case "${confirm}" in
     *)
         echo
         echo "Operațiune anulată."
-        echo "Backupul rămâne aici:"
+        echo "Backupul este:"
         echo "${BACKUP_FILE}"
         exit 0
         ;;
@@ -410,23 +385,25 @@ apache_config_test
 
 echo
 echo "=========================================="
-echo " Configurarea a fost salvată"
+echo " CONFIGURARE FINALIZATĂ"
 echo "=========================================="
+
 echo
+echo "Fișier:"
 echo "${CONFIG_FILE}"
 
 echo
-echo "Backup koha-sites.conf:"
+echo "Backup:"
 echo "${BACKUP_FILE}"
 
 if [[ -n "${APACHE_PORTS_BACKUP}" ]]; then
     echo
-    echo "Backup Apache ports.conf:"
+    echo "Backup Apache:"
     echo "${APACHE_PORTS_BACKUP}"
 fi
 
 echo
-echo "Conținut actual:"
+echo "Configurația finală:"
 echo "------------------------------------------"
 
 grep -E \
@@ -434,6 +411,12 @@ grep -E \
 "${CONFIG_FILE}" || true
 
 echo "------------------------------------------"
+
+echo
+echo "Pentru configurarea standard prin IP ar trebui să ai:"
+echo 'DOMAIN=""'
+echo 'INTRAPORT="8080"'
+echo 'OPACPORT="80"'
 
 echo
 echo "Gata."
