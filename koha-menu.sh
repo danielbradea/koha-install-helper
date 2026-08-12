@@ -95,7 +95,18 @@ run_step3() {
     echo "Se va crea automat backup înainte de modificare."
     echo
 
-    confirm_continue || return 0
+    read -r -p "Continui? [D/n]: " confirm
+    confirm="${confirm:-D}"
+
+    case "${confirm}" in
+        D|d|DA|Da|da|Y|y|YES|Yes|yes)
+            ;;
+        *)
+            echo "Operațiune anulată."
+            return 0
+            ;;
+    esac
+
 
     if [[ ! -f "${STEP3_SCRIPT}" ]]; then
         echo "EROARE: Nu găsesc scriptul:"
@@ -124,9 +135,32 @@ run_step4() {
     echo "- sudo systemctl restart apache2"
     echo
 
-    confirm_continue || return 0
+    read -r -p "Continui? [D/n]: " confirm
+    confirm="${confirm:-D}"
 
-    run_script "${STEP4_SCRIPT}" "PASUL 4: Creare instanță Koha"
+    case "${confirm}" in
+        D|d|DA|Da|da|Y|y|YES|Yes|yes)
+            ;;
+        *)
+            echo "Operațiune anulată."
+            return 0
+            ;;
+    esac
+
+    if [[ ! -f "${STEP4_SCRIPT}" ]]; then
+        echo "EROARE: Nu găsesc scriptul:"
+        echo "${STEP4_SCRIPT}"
+        return 1
+    fi
+
+    chmod +x "${STEP4_SCRIPT}"
+
+    echo
+    echo "Pornesc pasul 4: Creare instanță Koha"
+    echo
+
+    sudo bash "${STEP3_SCRIPT}"
+
 }
 
 run_step5() {
@@ -137,9 +171,32 @@ run_step5() {
     echo "Default instalează: română, franceză și germană."
     echo
 
-    confirm_continue || return 0
+    read -r -p "Continui? [D/n]: " confirm
+    confirm="${confirm:-D}"
 
-    run_script "${STEP5_SCRIPT}" "PASUL 5: Traduceri Koha"
+    case "${confirm}" in
+        D|d|DA|Da|da|Y|y|YES|Yes|yes)
+            ;;
+        *)
+            echo "Operațiune anulată."
+            return 0
+            ;;
+    esac
+
+    if [[ ! -f "${STEP5_SCRIPT}" ]]; then
+        echo "EROARE: Nu găsesc scriptul:"
+        echo "${STEP5_SCRIPT}"
+        return 1
+    fi
+
+    chmod +x "${STEP5_SCRIPT}"
+
+    echo
+    echo "Pornesc pasul 5: Traduceri Koha"
+    echo
+
+    sudo bash "${STEP5_SCRIPT}"
+
 }
 
 while true; do
@@ -172,11 +229,11 @@ while true; do
             pause_menu
             ;;
         4)
-            run_step3
+            run_step4
             pause_menu
             ;;
         5)
-            run_step3
+            run_step5
             pause_menu
             ;;
         0)
